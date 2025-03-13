@@ -20,8 +20,7 @@ jobs:
           images="${{ github.event.inputs.docker_images }}"
           IFS=',' read -r -a image_array <<< "$images"
           for image in "${image_array[@]}"; do
-            #docker pull "${image}" --platform "linux/arm64"
-            docker build --platform "linux/arm64" -t unbuntu_ffmpeg:v1.0
+            docker buildx build --platform=linux/arm64 -t unbuntu_ffmpeg:v1.0
             image_name="${image//\//_}"
             image_name="${image_name//:/_}"
             docker save unbuntu_ffmpeg:v1.0 -o "${image_name}-arm64.tar"
