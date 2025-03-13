@@ -24,8 +24,8 @@ jobs:
       - name: Build Docker Image for ARM
         uses: docker/build-push-action@v5
         with:
-          context: .
-          file: Dockerfile
+          context: .  # 根目录
+          file: Dockerfile  # 根目录下的 Dockerfile
           platforms: linux/arm64
           tags: ubuntu_ffmpeg_arm:v.10
           push: false
