@@ -1,4 +1,4 @@
-name: Build Docker Image and Export as Tar
+name: Build ARM Docker Image and Export as Tar
 
 # 触发条件：在 master 分支推送时运行
 on:
@@ -15,30 +15,37 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 步骤 2：设置 Docker Buildx
+      # 步骤 2：设置 QEMU 仿真（支持 ARM 架构）
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64  # 支持 ARM64 架构
+
+      # 步骤 3：设置 Docker Buildx
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # 步骤 3：构建 Docker 镜像
-      - name: Build Docker Image
+      # 步骤 4：构建 ARM 架构 Docker 镜像
+      - name: Build Docker Image for ARM
         uses: docker/build-push-action@v5
         with:
-          context: docker/  # 指定 Dockerfile 所在目录
-          file: docker/Dockerfile  # 指定 Dockerfile 路径
-          tags: my-app:latest  # 镜像名和标签
+          context: .  # 构建上下文为根目录
+          file: Dockerfile  # Dockerfile 位于根目录
+          platforms: linux/arm64  # 目标平台为 ARM64
+          tags: ubuntu_ffmpeg_arm:v.10  # 镜像名和标签
           push: false  # 不推送镜像，仅本地构建
           load: true  # 将镜像加载到本地 Docker 守护进程
 
-      # 步骤 4：将镜像保存为 .tar 文件
+      # 步骤 5：将镜像保存为 .tar 文件
       - name: Save Docker Image as Tar
         run: |
-          docker save -o my-app-latest.tar my-app:latest
-          ls -lh my-app-latest.tar
+          docker save -o ubuntu_ffmpeg_arm-v10.tar ubuntu_ffmpeg_arm:v.10
+          ls -lh ubuntu_ffmpeg_arm-v10.tar
 
-      # 步骤 5：上传 .tar 文件作为 artifact
+      # 步骤 6：上传 .tar 文件作为 artifact
       - name: Upload Docker Image Tar as Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: my-app-latest-tar
-          path: my-app-latest.tar
+          name: ubuntu_ffmpeg_arm-v10-tar
+          path: ubuntu_ffmpeg_arm-v10.tar
           retention-days: 7  # 保留 7 天
