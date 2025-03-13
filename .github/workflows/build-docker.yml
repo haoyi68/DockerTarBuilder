@@ -1,4 +1,4 @@
-name: Build ARM Docker Image and Export as Tar
+name: ubuntu-ffmpeg-arm Build
 
 on:
   push:
@@ -27,18 +27,18 @@ jobs:
           context: .  # 根目录
           file: Dockerfile  # 根目录下的 Dockerfile
           platforms: linux/arm64
-          tags: ubuntu_ffmpeg_arm:v.10
+          tags: ubuntu_ffmpeg_arm:v1.0
           push: false
           load: true
 
       - name: Save Docker Image as Tar
         run: |
-          docker save -o ubuntu_ffmpeg_arm-v10.tar ubuntu_ffmpeg_arm:v.10
-          ls -lh ubuntu_ffmpeg_arm-v10.tar
+          docker save -o ubuntu_ffmpeg_arm.tar ubuntu_ffmpeg_arm:v1.0
+          ls -lh ubuntu_ffmpeg_arm.tar
 
       - name: Upload Docker Image Tar as Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ubuntu_ffmpeg_arm-v10-tar
-          path: ubuntu_ffmpeg_arm-v10.tar
-          retention-days: 7
+          path: ubuntu_ffmpeg_arm.tar
+          retention-days: 2
