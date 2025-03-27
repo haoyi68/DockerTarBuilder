@@ -1,4 +1,4 @@
-name: Build_Export Image from Dockerfile 
+name: Build_Export Image from Dockerfile
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
       image_name:  # 定义输入参数：镜像名称
         description: 'Name of the Docker image (without tag)'
         required: true
-        default: 'ubuntu-ffmpeg-amd64'  # 默认镜像名称
+        default: 'Ubuntu-ffmpeg-amd64'  # 默认镜像名称
       image_tag:  # 定义输入参数：镜像标签
         description: 'Tag of the Docker image'
         required: true
@@ -17,7 +17,11 @@ on:
       tar_name:  # 定义输入参数：tar 文件名
         description: 'Name of the tar file (without .tar extension)'
         required: true
-        default: 'ubuntu-ffmpeg-amd64'  # 默认 tar 文件名
+        default: 'Ubuntu-ffmpeg-amd64'  # 默认 tar 文件名
+      platform:  # 新增输入参数：目标平台
+        description: 'Target platform for the Docker image (e.g., linux/amd64, linux/arm64)'
+        required: true
+        default: 'linux/amd64'  # 默认平台为 linux/amd64
 
 jobs:
   build-and-export:
@@ -32,19 +36,19 @@ jobs:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
         with:
-          platforms: amd64
+          platforms: all  # 支持所有平台（包括 amd64 和 arm64）
 
       # 3. 设置 Docker Buildx（支持多平台构建）
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # 4. 构建 Docker 镜像（指定平台为 linux/amd64）
-      - name: Build Docker Image for AMD64
+      # 4. 构建 Docker 镜像（使用用户选择的平台）
+      - name: Build Docker Image for Selected Platform
         uses: docker/build-push-action@v5
         with:
           context: .  # 构建上下文为当前目录
           file: Dockerfile  # 指定 Dockerfile 路径
-          platforms: linux/amd64  # 指定构建平台为 linux/amd64
+          platforms: ${{ github.event.inputs.platform }}  # 使用输入参数指定构建平台
           tags: ${{ github.event.inputs.image_name }}:${{ github.event.inputs.image_tag }}  # 使用输入参数设置镜像名称和标签
           push: false  # 不推送镜像
           load: true  # 将镜像加载到本地（以便后续保存为 tar）
@@ -52,13 +56,13 @@ jobs:
       # 5. 将 Docker 镜像保存为 tar 文件
       - name: Save Docker Image as Tar
         run: |
-          docker save -o ${{ github.event.inputs.tar_name }}.tar ${{ github.event.inputs.image_name }}:${{ github.event.inputs.image_tag }}
-          ls -lh ${{ github.event.inputs.tar_name }}.tar
+          docker save -o ${{ github.event.inputs.tar_name }}-${{ github.event.inputs.platform }}.tar ${{ github.event.inputs.image_name }}:${{ github.event.inputs.image_tag }}
+          ls -lh ${{ github.event.inputs.tar_name }}-${{ github.event.inputs.platform }}.tar
 
       # 6. 上传 Docker 镜像 tar 文件作为工件
       - name: Upload Docker Image Tar as Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ github.event.inputs.tar_name }}-${{ github.event.inputs.image_tag }}-tar  # 使用输入参数设置工件名称
-          path: ${{ github.event.inputs.tar_name }}.tar  # 使用输入参数设置 tar 文件路径
+          name: ${{ github.event.inputs.tar_name }}-${{ github.event.inputs.image_tag }}-${{ github.event.inputs.platform }}-tar  # 在工件名称中包含平台信息
+          path: ${{ github.event.inputs.tar_name }}-${{ github.event.inputs.platform }}.tar  # 在 tar 文件路径中包含平台信息
           retention-days: 2  # 工件保留 2 天
