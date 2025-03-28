@@ -46,20 +46,22 @@ jobs:
           PLATFORM_INPUT="${{ github.event.inputs.platform || 'amd' }}"
           if [ "$PLATFORM_INPUT" = "amd" ]; then
             FULL_PLATFORM="linux/amd64"
+            DOCKERFILE="Dockerfile.cpu"
           elif [ "$PLATFORM_INPUT" = "arm" ]; then
             FULL_PLATFORM="linux/arm64"
+            DOCKERFILE="Dockerfile.arm"
           else
             echo "Invalid platform: $PLATFORM_INPUT. Must be 'amd' or 'arm'."
             exit 1
           fi
           echo "full_platform=$FULL_PLATFORM" >> $GITHUB_OUTPUT
 
-          if [ -f "Dockerfile.cpu" ]; then
-            echo "dockerfile_path=Dockerfile.cpu" >> $GITHUB_OUTPUT
-          elif [ -f "Dockerfile" ]; then
-            echo "dockerfile_path=Dockerfile" >> $GITHUB_OUTPUT
+          if [ -f "$DOCKERFILE" ]; then
+            echo "dockerfile_path=$DOCKERFILE" >> $GITHUB_OUTPUT
           else
-            echo "No suitable Dockerfile found in vLLM root directory for platform $PLATFORM_INPUT"
+            echo "Required Dockerfile ($DOCKERFILE) not found in vLLM root directory for platform $PLATFORM_INPUT."
+            echo "For 'amd', 'Dockerfile.cpu' is required. For 'arm', 'Dockerfile.arm' is required."
+            echo "Please add the appropriate Dockerfile to the vLLM project root directory."
             exit 1
           fi
 
