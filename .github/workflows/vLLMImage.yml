@@ -64,11 +64,10 @@ jobs:
           fi
 
       - name: Build Docker Image for Selected Platform
-        working-directory: vllm
         uses: docker/build-push-action@v5
         with:
-          context: .
-          file: ${{ steps.setup.outputs.dockerfile_path }}
+          context: vllm
+          file: vllm/${{ steps.setup.outputs.dockerfile_path }}
           platforms: ${{ steps.setup.outputs.full_platform }}
           tags: ${{ github.event.inputs.image_name }}:${{ github.event.inputs.image_tag }}
           push: false
