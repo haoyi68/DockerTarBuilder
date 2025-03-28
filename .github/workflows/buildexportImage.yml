@@ -1,15 +1,12 @@
-name: Build_Export Image from Dockerfile
+name: Build Export Image from Dockerfile
 
 on:
-  push:
-    branches:
-      - main  # 当推送代码到 main 分支时触发
   workflow_dispatch:  # 允许手动触发工作流
     inputs:
       image_name:  # 定义输入参数：镜像名称
         description: 'Name of the Docker image (without tag)'
         required: true
-        default: 'Ubuntu-amd64'  # 默认镜像名称
+        default: 'Ubuntu-ffmpeg-amd64'  # 默认镜像名称
       image_tag:  # 定义输入参数：镜像标签
         description: 'Tag of the Docker image'
         required: true
@@ -17,13 +14,13 @@ on:
       tar_name:  # 定义输入参数：tar 文件名
         description: 'Name of the tar file (without .tar extension)'
         required: true
-        default: 'Ubuntu-amd64'  # 默认 tar 文件名
+        default: 'Ubuntu-ffmpeg-amd64'  # 默认 tar 文件名
       platform:  # 输入参数：目标平台
         description: 'Target platform for the Docker image (e.g., linux/amd64, linux/arm64)'
         required: false  # 设为可选
         default: 'linux/amd64'  # 默认平台
-      context_dir:  # 新增输入参数：构建上下文目录
-        description: 'Directory containing the Dockerfile (e.g., ., dockerfiles/amd64)'
+      context_dir:  # 输入参数：构建上下文目录
+        description: 'Directory containing the Dockerfile (e.g., ., test)'
         required: false  # 设为可选
         default: '.'  # 默认上下文目录为根目录
 
@@ -57,8 +54,11 @@ jobs:
           # 检查是否存在特定平台的 Dockerfile（例如 Dockerfile.amd64）
           if [ -f "$CONTEXT_DIR/Dockerfile.$PLATFORM_SHORT" ]; then
             echo "dockerfile_path=$CONTEXT_DIR/Dockerfile.$PLATFORM_SHORT" >> $GITHUB_OUTPUT
-          else
+          elif [ -f "$CONTEXT_DIR/Dockerfile" ]; then
             echo "dockerfile_path=$CONTEXT_DIR/Dockerfile" >> $GITHUB_OUTPUT
+          else
+            echo "No Dockerfile found in $CONTEXT_DIR for platform $PLATFORM_SHORT"
+            exit 1
           fi
 
       # 5. 构建 Docker 镜像（使用用户选择的上下文目录和平台）
