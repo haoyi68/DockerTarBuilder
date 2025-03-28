@@ -55,6 +55,9 @@ jobs:
             exit 1
           fi
           echo "full_platform=$FULL_PLATFORM" >> $GITHUB_OUTPUT
+          # 将 full_platform 中的斜杠替换为下划线，用于生成安全的文件名
+          SAFE_PLATFORM=$(echo "$FULL_PLATFORM" | tr '/' '_')
+          echo "safe_platform=$SAFE_PLATFORM" >> $GITHUB_OUTPUT
 
           if [ -f "$DOCKERFILE" ]; then
             echo "dockerfile_path=$DOCKERFILE" >> $GITHUB_OUTPUT
@@ -78,12 +81,12 @@ jobs:
       - name: Save Docker Image as Tar
         working-directory: vllm
         run: |
-          docker save -o ${{ github.event.inputs.tar_name }}-${{ steps.setup.outputs.full_platform }}.tar ${{ github.event.inputs.image_name }}:${{ github.event.inputs.image_tag }}
-          ls -lh ${{ github.event.inputs.tar_name }}-${{ steps.setup.outputs.full_platform }}.tar
+          docker save -o ${{ github.event.inputs.tar_name }}-${{ steps.setup.outputs.safe_platform }}.tar ${{ github.event.inputs.image_name }}:${{ github.event.inputs.image_tag }}
+          ls -lh ${{ github.event.inputs.tar_name }}-${{ steps.setup.outputs.safe_platform }}.tar
 
       - name: Upload Docker Image Tar as Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ github.event.inputs.tar_name }}-${{ github.event.inputs.image_tag }}-${{ steps.setup.outputs.full_platform }}-tar
-          path: vllm/${{ github.event.inputs.tar_name }}-${{ steps.setup.outputs.full_platform }}.tar
+          name: ${{ github.event.inputs.tar_name }}-${{ github.event.inputs.image_tag }}-${{ steps.setup.outputs.safe_platform }}-tar
+          path: vllm/${{ github.event.inputs.tar_name }}-${{ steps.setup.outputs.safe_platform }}.tar
           retention-days: 2
