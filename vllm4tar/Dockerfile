@@ -94,9 +94,9 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv pip install --system -r requirements/build.txt
 
 COPY . .
-#ARG GIT_REPO_CHECK=0
-#RUN --mount=type=bind,source=.git,target=.git \
-#    if [ "$GIT_REPO_CHECK" != "0" ]; then bash tools/check_repo.sh ; fi
+ARG GIT_REPO_CHECK=0
+RUN --mount=type=bind,source=../.git,target=.git \
+    if [ "$GIT_REPO_CHECK" != "0" ]; then bash tools/check_repo.sh ; fi
 
 # max jobs used by Ninja to build extensions
 ARG max_jobs=2
@@ -111,7 +111,7 @@ ARG SCCACHE_REGION_NAME=us-west-2
 ARG SCCACHE_S3_NO_CREDENTIALS=0
 # if USE_SCCACHE is set, use sccache to speed up compilation
 RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=.git,target=.git \
+    --mount=type=bind,source=../.git,target=.git \
     if [ "$USE_SCCACHE" = "1" ]; then \
         echo "Installing sccache..." \
         && curl -L -o sccache.tar.gz https://github.com/mozilla/sccache/releases/download/v0.8.1/sccache-v0.8.1-x86_64-unknown-linux-musl.tar.gz \
@@ -131,7 +131,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 ENV CCACHE_DIR=/root/.cache/ccache
 RUN --mount=type=cache,target=/root/.cache/ccache \
     --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=.git,target=.git  \
+    --mount=type=bind,source=../.git,target=.git  \
     if [ "$USE_SCCACHE" != "1" ]; then \
         # Clean any existing CMake artifacts
         rm -rf .deps && \
