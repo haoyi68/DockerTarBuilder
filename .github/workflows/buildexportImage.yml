@@ -32,6 +32,8 @@ jobs:
       # 1. 检出代码
       - name: Checkout repository
         uses: actions/checkout@v4
+         with:
+           fetch-depth: 0  # 确保克隆完整的 Git 历史和 .git 目录
 
       # 2. 设置 QEMU（支持多平台构建）
       - name: Set up QEMU
