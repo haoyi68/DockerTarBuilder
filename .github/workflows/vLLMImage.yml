@@ -1,54 +1,49 @@
-name: Clone vLLM Build and Export Docker Image
+name: CLone Build Export vLLM Docker Image
 
 on:
-  workflow_dispatch:  # 仅允许手动触发工作流
+  workflow_dispatch:
     inputs:
-      image_name:  # 镜像名称
+      image_name:
         description: 'Name of the Docker image (without tag)'
         required: true
-        default: 'vllm-image'  # 默认镜像名称
-      image_tag:  # 镜像标签
+        default: 'vllm-image'
+      image_tag:
         description: 'Tag of the Docker image'
         required: true
-        default: 'v1.0'  # 默认镜像标签
-      tar_name:  # tar 文件名
+        default: 'v1.0'
+      tar_name:
         description: 'Name of the tar file (without .tar extension)'
         required: true
-        default: 'vllm-image'  # 默认 tar 文件名
-      platform:  # 目标平台
+        default: 'vllm-image'
+      platform:
         description: 'Target platform for the Docker image (amd or arm)'
-        required: false  # 设为可选
-        default: 'amd'  # 默认平台为 amd
+        required: false
+        default: 'amd'
 
 jobs:
   build-and-export:
-    runs-on: ubuntu-latest  # 使用 Ubuntu 运行器
+    runs-on: ubuntu-latest
 
     steps:
-      # 1. 克隆 vLLM 项目
       - name: Clone vLLM Repository
         run: |
           git clone https://github.com/vllm-project/vllm.git
           cd vllm
-          git checkout main  # 确保使用 main 分支
+          git checkout main
 
-      # 2. 设置 QEMU（支持多平台构建）
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
         with:
-          platforms: all  # 支持所有平台（包括 amd64 和 arm64）
+          platforms: all
 
-      # 3. 设置 Docker Buildx（支持多平台构建）
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # 4. 确定平台和 Dockerfile 路径
       - name: Determine Platform and Dockerfile Path
         id: setup
-        working-directory: vllm  # 在克隆的 vLLM 目录中执行
+        working-directory: vllm
         run: |
           PLATFORM_INPUT="${{ github.event.inputs.platform || 'amd' }}"
-          # 将用户输入的 platform 转换为完整的平台格式（amd -> linux/amd64, arm -> linux/arm64）
           if [ "$PLATFORM_INPUT" = "amd" ]; then
             FULL_PLATFORM="linux/amd64"
           elif [ "$PLATFORM_INPUT" = "arm" ]; then
@@ -59,8 +54,6 @@ jobs:
           fi
           echo "full_platform=$FULL_PLATFORM" >> $GITHUB_OUTPUT
 
-          # 根据平台选择合适的 Dockerfile
-          # 优先使用 Dockerfile.cpu（适用于 CPU 系统），否则使用 Dockerfile
           if [ -f "Dockerfile.cpu" ]; then
             echo "dockerfile_path=Dockerfile.cpu" >> $GITHUB_OUTPUT
           elif [ -f "Dockerfile" ]; then
@@ -70,29 +63,26 @@ jobs:
             exit 1
           fi
 
-      # 5. 构建 Docker 镜像
       - name: Build Docker Image for Selected Platform
-        working-directory: vllm  # 在克隆的 vLLM 目录中执行
+        working-directory: vllm
         uses: docker/build-push-action@v5
         with:
-          context: .  # 构建上下文为 vLLM 根目录
-          file: ${{ steps.setup.outputs.dockerfile_path }}  # 使用动态确定的 Dockerfile 路径
-          platforms: ${{ steps.setup.outputs.full_platform }}  # 使用转换后的完整平台
-          tags: ${{ github.event.inputs.image_name }}:${{ github.event.inputs.image_tag }}  # 使用输入参数设置镜像名称和标签
-          push: false  # 不推送镜像
-          load: true  # 将镜像加载到本地（以便后续保存为 tar）
+          context: .
+          file: ${{ steps.setup.outputs.dockerfile_path }}
+          platforms: ${{ steps.setup.outputs.full_platform }}
+          tags: ${{ github.event.inputs.image_name }}:${{ github.event.inputs.image_tag }}
+          push: false
+          load: true
 
-      # 6. 将 Docker 镜像保存为 tar 文件
       - name: Save Docker Image as Tar
-        working-directory: vllm  # 在克隆的 vLLM 目录中执行
+        working-directory: vllm
         run: |
           docker save -o ${{ github.event.inputs.tar_name }}-${{ steps.setup.outputs.full_platform }}.tar ${{ github.event.inputs.image_name }}:${{ github.event.inputs.image_tag }}
           ls -lh ${{ github.event.inputs.tar_name }}-${{ steps.setup.outputs.full_platform }}.tar
 
-      # 7. 上传 Docker 镜像 tar 文件作为工件
       - name: Upload Docker Image Tar as Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ github.event.inputs.tar_name }}-${{ github.event.inputs.image_tag }}-${{ steps.setup.outputs.full_platform }}-tar  # 在工件名称中包含平台信息
-          path: vllm/${{ github.event.inputs.tar_name }}-${{ steps.setup.outputs.full_platform }}.tar  # 指定 tar 文件路径
-          retention-days: 2  # 工件保留 2 天
+          name: ${{ github.event.inputs.tar_name }}-${{ github.event.inputs.image_tag }}-${{ steps.setup.outputs.full_platform }}-tar
+          path: vllm/${{ github.event.inputs.tar_name }}-${{ steps.setup.outputs.full_platform }}.tar
+          retention-days: 2
