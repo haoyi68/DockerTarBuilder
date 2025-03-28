@@ -1,7 +1,7 @@
 name: Build Export Image from Dockerfile
 
 on:
-  workflow_dispatch:  # 允许手动触发工作流
+  workflow_dispatch:  # 仅允许手动触发工作流
     inputs:
       image_name:  # 定义输入参数：镜像名称
         description: 'Name of the Docker image (without tag)'
@@ -16,9 +16,9 @@ on:
         required: true
         default: 'Ubuntu-ffmpeg-amd64'  # 默认 tar 文件名
       platform:  # 输入参数：目标平台
-        description: 'Target platform for the Docker image (e.g., linux/amd64, linux/arm64)'
+        description: 'Target platform for the Docker image (amd or arm)'
         required: false  # 设为可选
-        default: 'linux/amd64'  # 默认平台
+        default: 'amd'  # 默认平台为 amd
       context_dir:  # 输入参数：构建上下文目录
         description: 'Directory containing the Dockerfile (e.g., ., test)'
         required: false  # 设为可选
@@ -43,21 +43,30 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # 4. 确定 Dockerfile 路径（根据平台选择 Dockerfile）
-      - name: Determine Dockerfile Path
-        id: dockerfile
+      # 4. 确定平台和 Dockerfile 路径
+      - name: Determine Platform and Dockerfile Path
+        id: setup
         run: |
+          PLATFORM_INPUT="${{ github.event.inputs.platform || 'amd' }}"
+          # 将用户输入的 platform 转换为完整的平台格式（amd -> linux/amd64, arm -> linux/arm64）
+          if [ "$PLATFORM_INPUT" = "amd" ]; then
+            FULL_PLATFORM="linux/amd64"
+          elif [ "$PLATFORM_INPUT" = "arm" ]; then
+            FULL_PLATFORM="linux/arm64"
+          else
+            echo "Invalid platform: $PLATFORM_INPUT. Must be 'amd' or 'arm'."
+            exit 1
+          fi
+          echo "full_platform=$FULL_PLATFORM" >> $GITHUB_OUTPUT
+
           CONTEXT_DIR="${{ github.event.inputs.context_dir || '.' }}"
-          PLATFORM="${{ github.event.inputs.platform || 'linux/amd64' }}"
-          # 将平台格式化为简短形式（例如 linux/amd64 -> amd64）
-          PLATFORM_SHORT=$(echo "$PLATFORM" | cut -d'/' -f2)
-          # 检查是否存在特定平台的 Dockerfile（例如 Dockerfile.amd64）
-          if [ -f "$CONTEXT_DIR/Dockerfile.$PLATFORM_SHORT" ]; then
-            echo "dockerfile_path=$CONTEXT_DIR/Dockerfile.$PLATFORM_SHORT" >> $GITHUB_OUTPUT
+          # 检查是否存在特定平台的 Dockerfile（例如 Dockerfile.amd 或 Dockerfile.arm）
+          if [ -f "$CONTEXT_DIR/Dockerfile.$PLATFORM_INPUT" ]; then
+            echo "dockerfile_path=$CONTEXT_DIR/Dockerfile.$PLATFORM_INPUT" >> $GITHUB_OUTPUT
           elif [ -f "$CONTEXT_DIR/Dockerfile" ]; then
             echo "dockerfile_path=$CONTEXT_DIR/Dockerfile" >> $GITHUB_OUTPUT
           else
-            echo "No Dockerfile found in $CONTEXT_DIR for platform $PLATFORM_SHORT"
+            echo "No Dockerfile found in $CONTEXT_DIR for platform $PLATFORM_INPUT"
             exit 1
           fi
 
@@ -66,8 +75,8 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ${{ github.event.inputs.context_dir || '.' }}  # 使用输入参数指定构建上下文目录
-          file: ${{ steps.dockerfile.outputs.dockerfile_path }}  # 使用动态确定的 Dockerfile 路径
-          platforms: ${{ github.event.inputs.platform || 'linux/amd64' }}  # 使用输入参数指定构建平台
+          file: ${{ steps.setup.outputs.dockerfile_path }}  # 使用动态确定的 Dockerfile 路径
+          platforms: ${{ steps.setup.outputs.full_platform }}  # 使用转换后的完整平台
           tags: ${{ github.event.inputs.image_name }}:${{ github.event.inputs.image_tag }}  # 使用输入参数设置镜像名称和标签
           push: false  # 不推送镜像
           load: true  # 将镜像加载到本地（以便后续保存为 tar）
@@ -75,13 +84,13 @@ jobs:
       # 6. 将 Docker 镜像保存为 tar 文件
       - name: Save Docker Image as Tar
         run: |
-          docker save -o ${{ github.event.inputs.tar_name }}-${{ github.event.inputs.platform || 'linux/amd64' }}.tar ${{ github.event.inputs.image_name }}:${{ github.event.inputs.image_tag }}
-          ls -lh ${{ github.event.inputs.tar_name }}-${{ github.event.inputs.platform || 'linux/amd64' }}.tar
+          docker save -o ${{ github.event.inputs.tar_name }}-${{ steps.setup.outputs.full_platform }}.tar ${{ github.event.inputs.image_name }}:${{ github.event.inputs.image_tag }}
+          ls -lh ${{ github.event.inputs.tar_name }}-${{ steps.setup.outputs.full_platform }}.tar
 
       # 7. 上传 Docker 镜像 tar 文件作为工件
       - name: Upload Docker Image Tar as Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ github.event.inputs.tar_name }}-${{ github.event.inputs.image_tag }}-${{ github.event.inputs.platform || 'linux/amd64' }}-tar  # 在工件名称中包含平台信息
-          path: ${{ github.event.inputs.tar_name }}-${{ github.event.inputs.platform || 'linux/amd64' }}.tar  # 在 tar 文件路径中包含平台信息
+          name: ${{ github.event.inputs.tar_name }}-${{ github.event.inputs.image_tag }}-${{ steps.setup.outputs.full_platform }}-tar  # 在工件名称中包含平台信息
+          path: ${{ github.event.inputs.tar_name }}-${{ steps.setup.outputs.full_platform }}.tar  # 在 tar 文件路径中包含平台信息
           retention-days: 2  # 工件保留 2 天
