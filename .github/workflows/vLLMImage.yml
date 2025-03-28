@@ -1,4 +1,4 @@
-name: CLone Build Export vLLM Docker Image
+name: Build and Export vLLM Docker Image
 
 on:
   workflow_dispatch:
