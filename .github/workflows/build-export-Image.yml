@@ -89,7 +89,7 @@ jobs:
       - name: Save Docker Image as Tar
         run: |
           docker save -o ${{ github.event.inputs.tar_name }}.tar ${{ github.event.inputs.image_name }}:${{ github.event.inputs.image_tag }}
-          ls -lh ${{ github.event.inputs.tar_name }}-${{ steps.setup.outputs.full_platform }}.tar
+          ls -lh ${{ github.event.inputs.tar_name }}.tar
 
       - name: Upload Docker Image Tar as Artifact
         uses: actions/upload-artifact@v4
