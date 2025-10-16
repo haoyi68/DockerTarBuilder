@@ -56,7 +56,6 @@ jobs:
           fi
           echo "full_platform=$FULL_PLATFORM" >> $GITHUB_OUTPUT
 
-          # 👇 使用 GITHUB_WORKSPACE 作为根目录
           CONTEXT_DIR="${{ github.event.inputs.context_dir || '${GITHUB_WORKSPACE}' }}"
 
           # 查找 dockerfile.<platform> 或 Dockerfile
@@ -69,10 +68,18 @@ jobs:
             exit 1
           fi
 
+      # 👇 新增步骤：获取 Dockerfile 所在目录作为构建上下文
+      - name: Get Dockerfile Directory as Context
+        id: dockerfile_dir
+        run: |
+          DOCKERFILE_PATH="${{ steps.setup.outputs.dockerfile_path }}"
+          CONTEXT_DIR="$(dirname "$DOCKERFILE_PATH")"
+          echo "context_dir=$CONTEXT_DIR" >> $GITHUB_OUTPUT
+
       - name: Build Docker Image for Selected Platform
         uses: docker/build-push-action@v5
         with:
-          context: ${{ steps.setup.outputs.dockerfile_path | dirname }}  # 👈 自动使用 Dockerfile 所在目录
+          context: ${{ steps.dockerfile_dir.outputs.context_dir }}  # ✅ 使用上一步计算出的目录
           file: ${{ steps.setup.outputs.dockerfile_path }}
           platforms: ${{ steps.setup.outputs.full_platform }}
           tags: ${{ github.event.inputs.image_name }}:${{ github.event.inputs.image_tag }}
